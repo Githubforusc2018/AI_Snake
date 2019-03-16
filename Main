@@ -1,0 +1,604 @@
+import AePlayWave.AePlayWave;
+
+import SnakeNode.SnakeNode;
+
+import Food.Food;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.Random;
+
+import static com.sun.java.accessibility.util.AWTEventMonitor.addKeyListener;
+
+public class Main extends JComponent{
+    private static int Key;
+    private int SnakeLength = 3;    //当前蛇长度
+    private final int MaxSnakeLength = 400;    //蛇最长为400
+    private String current_direction ="R"; //当前蛇行走方向.
+    private String SongNames[] = {"赵雷 - 鼓楼.wav","赵雷 - 南方姑娘.wav","赵雷 - 成都.wav","林俊杰 - 圣所.wav","林俊杰 - 黑夜问白天.wav"};
+    private int M[][] = new int[30][30];    //蛇路径
+    private int N[][] = new int[30][30];    //走的路径
+    public AePlayWave ae = new AePlayWave("赵雷 - 鼓楼.wav");
+    public SnakeNode[] body = new SnakeNode[MaxSnakeLength];   //申请这么多的蛇节点.
+    private Thread run;
+    private boolean initialShape;
+    private boolean isEaten;    //是否食物被吃.
+    private boolean isRun;  //是否死亡.
+    private boolean pause,flag = false;  //是否暂停.
+    private int Hour,Minute,Second,randomX=55,randomY=55,Minis,PlayerModel,Difficulty;
+
+    private JLabel label1 = new JLabel("当前长度:");
+    private JLabel label2 = new JLabel("所花时间:");
+    private JLabel label3 = new JLabel("游戏说明:");
+    private JLabel label4 = new JLabel("难度选择");
+    private JLabel label5 = new JLabel("游戏模式");
+    private JLabel label6 = new JLabel("游戏速度");
+    private JLabel label7 = new JLabel("当前歌曲");
+    private JPanel Panel= new JPanel();
+    private JTextArea Explain = new JTextArea("按ESC重新开始\n按Space暂停\n按Enter切换歌");
+    private JLabel Score = new JLabel("4");
+    private JLabel Time = new JLabel("00:00:00");
+    private JLabel ChooseDifficulty = new JLabel("难度：一般");
+    private JLabel ChooseUser = new JLabel("用户：玩家");
+    private JLabel GameSpeed = new JLabel("0.00s刷新频率");
+
+    private JLabel SongName = new JLabel("");
+    public SnakeNode head ;   //头部节点初始化为227,100.
+    public Main(){
+
+        //这是把外观设置成你所使用的平台的外观,也就是你这个程序在哪个平台运行,显示的窗口,对话框外观将是哪个平台的外观
+        String lookAndFeel =UIManager.getSystemLookAndFeelClassName();
+        try {
+            UIManager.setLookAndFeel(lookAndFeel);
+        } catch (ClassNotFoundException e1) {
+            // TODO 自动生成的 catch 块
+            e1.printStackTrace();
+        } catch (InstantiationException e1) {
+            // TODO 自动生成的 catch 块
+            e1.printStackTrace();
+        } catch (IllegalAccessException e1) {
+            // TODO 自动生成的 catch 块
+            e1.printStackTrace();
+        } catch (UnsupportedLookAndFeelException e1) {
+            // TODO 自动生成的 catch 块
+            e1.printStackTrace();
+        }
+        //布局.
+        add(label1);    //当前长度
+        label1.setBounds(500,10,80,20);
+        add(Score);     //长度
+        Score.setBounds(500,35,80,20);
+        add(label2);    //所花时间
+        label2.setBounds(500,60,80,20);
+        add(Time);      //时间
+        Time.setBounds(500,85,80,20);
+        add(label4);    /*  难度选择*/
+        label4.setBounds(500,110,80,20);
+        add(ChooseDifficulty);
+        ChooseDifficulty.setBounds(500,135,80,20);
+        add(label5);    /*  模式选择*/
+        label5.setBounds(500,160,80,20);
+        add(ChooseUser);/*  模式*/
+        ChooseUser.setBounds(500,185,80,20);
+
+        add(label6);
+        label6.setBounds(500,210,80,20);
+        add(GameSpeed);
+        GameSpeed.setBounds(500,235,90,20);
+        add(label7);
+        label7.setBounds(500,260,80,20);
+        add(SongName);
+        SongName.setBounds(500,285,130,20);
+        /*  换颜色
+        * */
+        Score.setForeground(Color.MAGENTA);
+        Time.setForeground(Color.MAGENTA);
+        ChooseUser.setForeground(Color.MAGENTA);
+        ChooseDifficulty.setForeground(Color.MAGENTA);
+        GameSpeed.setForeground(Color.MAGENTA);
+        SongName.setForeground(Color.MAGENTA);
+
+        add(Panel);     //面板
+        Panel.setBounds(500,310,100,2);
+        Panel.setBorder(BorderFactory.createLineBorder(Color.MAGENTA));
+        add(label3);    //游戏说明
+        label3.setBounds(500,315,80,20);
+        add(Explain);
+        Explain.setBounds(500,340,90,200);
+        Explain.setLineWrap(true);
+        Explain.setOpaque(false);   //当设置为false时，组件并未不会显示其中的某些像素，允许控件下面的像素显现出来
+        initialData();
+        ChooseModel();
+        PressKey();
+        new Timer();
+        setFocusable(true);
+    }
+    public void paintComponent(Graphics g1){
+        //画图形.Graphics2D继承自Graphics，它扩展了Graphics的绘图功能，拥有更强大的二维图形处理能力，提供对几何形状、坐标转换、颜色管理以及文字布局等更精确的控制
+        //System.out.println("paintComponent方法被调用");
+        Graphics2D g = (Graphics2D)g1;/*  算法指定？*/
+        g.setColor(Color.red);  //红色为头部
+        g.fillRoundRect(head.x,head.y,20,20,10,10); //圆角矩形.
+        /*GradientPaint是Java2D中专门用来控制渐变的类*/
+        g.setPaint(new GradientPaint(115,135,Color.magenta,260,165,Color.CYAN,true));
+        if (initialShape){
+            //说明第一次加载游戏...
+            int x = head.x;
+            //设置方块宽为20px,间距2px.画蛇身体
+            for(int i=0;i<SnakeLength;i++){
+                x = x-22;
+                body[i].x = x;
+                body[i].y = head.y;
+                //System.out.println("蛇身体:"+body[i].x+","+body[i].y);
+                g.fillRoundRect(body[i].x,body[i].y,20,20,10,10);
+            }
+            //初始化食物位置...
+            produceRandom();
+            //fillOval是填充椭圆的，食物变成椭圆样子.
+            g.setColor(Color.PINK);
+            g.fillOval(randomX,randomY,19,19);
+        }else{
+            //不是第一次，移动身体
+            for(int i=0;i<SnakeLength;i++){
+                //System.out.println("移动身体:"+body[i].x+","+body[i].y);
+                g.fillRoundRect(body[i].x,body[i].y,20,20,10,10);
+            }
+            //System.out.println("蛇头身体:"+head.x+","+head.y);
+            if (eatFood()){
+                //吃到食物了
+                ++SnakeLength;
+                body[SnakeLength-1].x = body[SnakeLength-2].x;
+                body[SnakeLength-1].y = body[SnakeLength-2].y;
+                produceRandom();
+                Score.setText(""+SnakeLength);  //蛇长度没计算头部..
+
+                g.fillOval(randomX,randomY,19,19);
+            }else{
+                //刷新食物.
+                g.fillOval(randomX,randomY,19,19);
+            }
+            /*  墙，网格线.*/
+            /*调用setStroke()方法设置笔画的属性，如改变线条的粗细、虚实和定义线段端点的形状、风格等
+             * BasicStroke用于定义线条的特征Join参数用于修饰线段交汇效果
+             * */
+            g.setStroke( new BasicStroke(4,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
+            g.setBackground(Color.PINK);
+            g.drawRect(2, 5, 491, 470);
+            /*  画网格线*/
+            for(int i = 1;i < 22;i++)
+            {
+                g.setStroke( new BasicStroke(1,BasicStroke.CAP_BUTT,BasicStroke.JOIN_BEVEL));
+                g.setColor(Color.pink);
+                g.drawLine(5+i*22,9,5+i*22,472);    //横，竖.
+                //使用当前颜色在点 (x1,y1) 和 (x2,y2)之间画一条线
+                if(i <= 20)
+                {
+                    g.drawLine(4,10+i*22,491,10+i*22);
+                }
+            }
+        }
+        initialShape = false;   //不是第一次加载游戏
+    }
+    private void PressKey(){
+        addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent e) {
+                super.keyPressed(e);
+                if (e.getKeyCode()==KeyEvent.VK_RIGHT){
+                    //向右.
+                    if (isRun&&current_direction!="L"){
+                        current_direction = "R";    //当前方向不是左就能右.
+                    }
+                }
+                else if (e.getKeyCode() == KeyEvent.VK_LEFT){
+                    if (isRun && current_direction!="R"){
+                        current_direction = "L";
+                    }
+                }
+                else if (e.getKeyCode()==KeyEvent.VK_UP){
+                    if (isRun && current_direction!="D"){
+                        current_direction = "U";
+                    }
+                }else if (e.getKeyCode() == KeyEvent.VK_DOWN){
+                    if (isRun && current_direction != "U"){
+                        current_direction = "D";
+                    }
+                }else if (e.getKeyCode()==KeyEvent.VK_SPACE){
+                    if (pause){
+                        pause = false;  //如果暂停，就开始.
+                    }else{
+                        pause = true;   //暂停.
+                    }
+                }else if (e.getKeyCode()==KeyEvent.VK_ESCAPE){
+                    initialData();
+                    run = new Thread();
+                    run.start();
+                }
+                if (e.getKeyCode()==KeyEvent.VK_ENTER){
+                    ++Key;
+                    if (Key==SongNames.length) Key = 0;
+                    StartMusic();
+                }
+                /*  加一个按空格，按ESC重来的建码.
+                    封装复位函数....
+                *
+                * */
+            }
+        });
+        //System.out.println("KeyPress调用");
+    }
+    public void initialData(){
+        Key = 0;
+        SnakeLength = 4;
+        current_direction = "R"; //当前蛇行走方向.
+        initialShape = true;
+        isEaten = false;    //是否食物被吃.
+        isRun = true;  //是否死亡.
+        pause = false;  //是否暂停.
+        Hour = 0;
+        Minute = 0;
+        Second = 0;
+        Minis = 800;
+        Score.setText(SnakeLength+"");
+        Time.setText("00:00:00");
+        head = new SnakeNode(227,100);
+        for(int i=0;i<MaxSnakeLength;i++){
+            body[i] = new SnakeNode(0,0);
+        }
+        for(int i=0;i<23;i++){
+            for(int j=0;j<22;j++){
+                M[i][j] = 0;
+                N[i][j] = 0;
+            }
+        }
+    }
+    public void produceRandom() {
+        boolean flag = true;
+        Random rand = new Random();
+        randomX = (rand.nextInt(15) + 1) * 22 + 7;  //按22算，x>=7
+        randomY = (rand.nextInt(15) + 1) * 22 + 12; //按22算,y>=12
+        while (flag) {
+            for (int i = 0; i < SnakeLength; i++) {
+                if (body[i].x == randomX && body[i].y == randomY) {
+                    randomX = (rand.nextInt(15) + 1) * 22 + 7;  //按22算，x>=7
+                    randomY = (rand.nextInt(15) + 1) * 22 + 12; //按22算,y>=12
+                    flag = true;
+                    break;
+                }
+                if (i == SnakeLength - 1) {
+                    flag = false;   //满足条件.
+                }
+            }
+        }
+        System.out.println("randomX:"+randomX+",randomY:"+randomY);
+    }
+    private boolean eatFood(){
+        if (head.x==randomX&&head.y==randomY){
+            //食物被吃了
+            return true;
+        }else{
+            return false;
+        }
+
+    }
+    private void hitWall(){
+        /*墙体设置7<=x<=489
+         * 12<=y<=472
+         * */
+        if (current_direction.equals("L")){
+            if (head.x<7){
+                /*  死亡了，是否重新开始 */
+                IfStartAgain();
+                System.out.println("hitWall函数被调用1");
+            }
+        }else if (current_direction.equals("R")){
+            if (head.x>489){
+                IfStartAgain();
+                System.out.println("hitWall函数被调用2");
+            }
+        }else if (current_direction.equals("U")){
+            if (head.y<12){
+                IfStartAgain();
+                System.out.println("hitWall函数被调用3");
+            }
+        }else if (current_direction.equals("D")){
+            if (head.y>472){
+                IfStartAgain();
+                System.out.println("hitWall函数被调用4");
+            }
+        }
+    }
+    private void hitSelf(){
+        for(int i=0;i<SnakeLength;i++){
+            if (head.x==body[i].x&&head.y==body[i].y){
+                isRun = false;
+                pause = true;
+                /*死亡，提示用户是否继续.
+                 *   播放音乐，各参数回调.
+                 *
+                 * */
+                IfStartAgain();
+            }
+        }
+    }
+    /*  控制移动*/
+    private void IfStartAgain(){
+        /*  游戏重新开始了 */
+        isRun = false;  //死亡...
+        int result = JOptionPane.showConfirmDialog(null,"游戏结束","来自贪吃蛇",JOptionPane.YES_NO_OPTION);
+        if (result == JOptionPane.YES_NO_OPTION){
+            //选择继续游戏了.
+            initialData();
+            run = new Thread();
+            run.start();
+            System.out.println("游戏重新开始");
+        }else{
+            run.stop();
+            pause = true;
+        }
+
+    }
+    private void ChooseModel(){
+        /*游戏模式选择，电脑模式，玩家模式,难度选择，一般，高级*/
+        int result = JOptionPane.showConfirmDialog(null,"是否选择玩家模式","TCS",JOptionPane.YES_NO_OPTION);
+        if (result == JOptionPane.YES_NO_OPTION){
+            //玩家模式,提示选择难度.
+            PlayerModel = 1 ;
+        }
+        else    {
+            PlayerModel = 0;    //AI模式
+            ChooseUser.setText("用户:AI");
+        }
+        Object[] possibleValues = { "一般难度 ", "进阶难度 " };
+        Object selectedValue = JOptionPane.showInputDialog(null, "选择游戏难度", "TCS", JOptionPane.INFORMATION_MESSAGE, null, possibleValues, possibleValues[0]);
+        if (selectedValue=="一般难度 "){
+            Difficulty = 0; //一般
+        }else{
+            Difficulty = 1; //进阶
+            ChooseDifficulty.setText("难度:进阶");
+        }
+    }
+    private void Thread(){
+        run = new Thread(){
+            public void run(){
+                while(true){
+                    //System.out.println("线程Thread调用");
+                    /*  移动线程*/
+                    try{
+                        Thread.sleep(Minis);
+                    }catch(InterruptedException e){
+                        e.printStackTrace();
+                    }
+                    /*  一般难度*/
+                    if (Difficulty==0){
+                        //每隔20秒，难度增加
+                        if (Second%5==0){
+                            Minis = Minis - 10;
+                        }
+                        if (Minis<=200) Minis=200;
+                    }else {
+                        /*  困难模式*/
+                        if (Second%2==0){
+                            if (Minis>=400){
+                                Minis = Minis - 40;
+                            }
+                            Minis = Minis - 30 ;
+                        }
+                        if (Minis <=50)    Minis = 50;
+                    }
+                    GameSpeed.setText(String.format("%.2f",1000.0/Minis)+"s刷新频率");
+                    if (!pause){
+                        BFS();
+                        System.out.println("蛇头:"+head.x+","+head.y+"，随机数"+randomX+","+randomY);
+                        SnakeNode temp = new SnakeNode();
+                        temp.x = head.x;    //暂存该节点.
+                        temp.y = head.y;
+                        if (current_direction.equals("U")){
+                            head.y = head.y - 22;
+                        }else if (current_direction.equals("D")){
+                            head.y = head.y + 22;
+                        }else if (current_direction.equals("L")){
+                            head.x = head.x - 22;
+                        }else if (current_direction.equals("R")){
+                            head.x = head.x + 22;
+                        }
+                        for(int i =SnakeLength-1;i>0;--i){
+                            body[i].x = body[i-1].x;
+                            body[i].y = body[i-1].y;
+                            //System.out.println("i="+i);
+                        }
+                        body[0].x = temp.x;
+                        body[0].y = temp.y;
+
+                    }
+                    repaint();
+                    hitWall();
+                    hitSelf();
+                }
+            }
+        };
+        run.start();
+    }
+    private void StartMusic(){
+        ae.stop();
+        ae = new AePlayWave(SongNames[Key]);
+        SongName.setText(SongNames[Key].split(".wav")[0]);
+        ae.start();
+    }
+    private void BFS(){
+        int x = head.x;
+        int y = head.y;
+        if (head.y == randomY){
+            /*  同行，头在食物左面*/
+            if (head.x < randomX){
+                if (CanWalk(x+22,y)){
+                    current_direction = "R";    //右面能走.
+                }else if (CanWalk(x,y-22)){
+                    current_direction = "U";    //上
+                }
+                else if (CanWalk(x,y+22)){
+                    current_direction = "D";
+                }else{
+                    current_direction = "L";
+                }
+            }else{
+                /*头在食物右面*/
+                if (CanWalk(x-22,y)){
+                    current_direction = "L";    //上面能走.
+                }else if (CanWalk(x,y+22)){
+                    current_direction = "D";
+                }
+                else if (CanWalk(x,y-22)){
+                    current_direction = "U";
+                }else {
+                    current_direction = "R";
+                }
+            }
+        }else if (head.x == randomX){
+            /*  同列,头在食物的上边*/
+            if (head.y < randomY){
+                if (CanWalk(x,y+22)){
+                    current_direction = "D";    //右面能走.
+                }else if (CanWalk(x-22,y)){
+                    current_direction = "L";
+                }
+                else if (CanWalk(x+22,y)){
+                    current_direction = "R";
+                }else{
+                    current_direction = "U";
+                }
+            }else{
+                /*头在食物下面*/
+                if (CanWalk(x,y-22)){
+                    current_direction = "U";    //上面能走.
+                }else if (CanWalk(x-22,y)){
+                    current_direction = "L";
+                }
+                else if (CanWalk(x+22,y)){
+                    current_direction = "R";
+                }else {
+                    current_direction = "D";
+                }
+            }
+        }
+        else if (head.y>randomY&&head.x>randomX){
+            //如果没撞墙，也没撞自己.右下方.
+            if (CanWalk(x,y-22)){
+                current_direction = "U";
+            }else if (CanWalk(x-22,y)){
+                current_direction = "L";
+            }
+            else if (CanWalk(x,y-22)){
+                current_direction = "D";
+            }else {
+                current_direction = "R";
+            }
+        }else if (head.y>randomY&&head.x<randomX){
+            //如果没撞墙，也没撞自己.左下方
+            if (CanWalk(x+22,y)){
+                current_direction = "R";    //上面能走.
+            }else if (CanWalk(x,y-22)){
+                current_direction = "U";
+            }
+            else if (CanWalk(x,y+22)){
+                current_direction = "D";
+            }else {
+                current_direction = "L";
+            }
+        }
+        else if (head.y<randomY&&head.x<randomX){
+            //如果没撞墙，也没撞自己.左上方
+            if (CanWalk(x,y+22)){
+                current_direction = "D";    //上面能走.
+            }else if (CanWalk(x+22,y)){
+                current_direction = "R";
+            }
+            else if (CanWalk(x,y-22)){
+                current_direction = "U";
+            }else {
+                current_direction = "L";
+            }
+        }
+        else if (head.y<randomY&&head.x>randomX){
+            //如果没撞墙，也没撞自己.右上方.
+            if (CanWalk(x-22,y)){
+                current_direction = "L";    //上面能走.
+            }else if (CanWalk(x,y+22)){
+                current_direction = "D";
+            }
+            else if (CanWalk(x,y-22)){
+                current_direction = "U";
+            }else {
+                current_direction = "r";
+            }
+        }
+    }
+    private boolean CanWalk(int x,int y){
+        for(int i=0;i<SnakeLength;i++){
+            if (x==body[i].x&&y==body[i].y){
+                return false;   /*  撞自己*/
+            }
+        }
+        if (x<7 || x>489 || y<12 || y>472){
+            return false;
+        }
+        return true;
+    }
+    class Timer extends Thread{
+        public Timer(){
+            this.start();
+        }
+        public void run(){
+            while(true){
+                if (isRun){
+                    Second = Second + 1;
+                    if (Second==60){
+                        Second = 0;
+                        Minute = Minute +1;
+                    }
+                    if (Minute==60){
+                        Minute = 0;
+                        Hour = Hour + 1;
+                    }
+                    showTime();
+                }
+                try{
+                    Thread.sleep(1000);
+                }catch(InterruptedException e){
+                    e.printStackTrace();
+                }
+            }
+        }
+        public void showTime(){
+            String showtime = "";
+            if (Hour<10){
+                showtime = "0" + Hour +":";
+            }else{
+                showtime = ""+Hour + ":";
+            }
+            if (Minute<10){
+                showtime += "0" + Minute + ":";
+            }else{
+                showtime +=""+ Minute + ":";
+            }
+            if (Second<10){
+                showtime += "0" + Second + "";
+            }else{
+                showtime += ""+Second +"";
+            }
+            Time.setText(showtime);
+        }
+    }
+    public static void main(String[] args){
+        Main t = new Main();
+        t.Thread(); //开启主线程.
+        JFrame frame = new JFrame();
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        frame.setSize(632,517);
+        frame.setResizable(false);
+        frame.setLocationRelativeTo(null);
+        frame.add(t);
+        frame.setVisible(true);
+        t.StartMusic();
+    }
+}
