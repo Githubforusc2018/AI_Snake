@@ -1,0 +1,14 @@
+package SnakeNode;
+
+public class SnakeNode {
+    //蛇移动，控制...
+    public int x,y;
+    public SnakeNode(int x1,int y1){
+        this.x = x1;
+        this.y = y1;
+    }
+    public SnakeNode(){
+        x = 0;
+        y = 0;
+    }
+}
